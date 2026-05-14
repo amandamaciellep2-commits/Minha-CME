@@ -188,10 +188,104 @@ interface DashboardViewProps {
   toggleTask: (id: number) => void;
   notes: string;
   setNotes: (val: string) => void;
-  links: Array<{ id: string; label: string; url: string }>;
-  addLink: (label: string, url: string) => void;
-  removeLink: (id: string) => void;
+  escalaTexto: string;
+  setEscalaTexto: (val: string) => void;
+  pendencias: Array<{ id: string; label: string; checked: boolean }>;
+  addPendencia: (text: string) => void;
+  togglePendencia: (id: string) => void;
+  removePendencia: (id: string) => void;
   key?: string | number;
+}
+
+function PendenciasCard({ 
+  pendencias, 
+  addPendencia, 
+  togglePendencia, 
+  removePendencia 
+}: { 
+  pendencias: Array<{ id: string; label: string; checked: boolean }>;
+  addPendencia: (text: string) => void;
+  togglePendencia: (id: string) => void;
+  removePendencia: (id: string) => void;
+}) {
+  const [text, setText] = useState('');
+  const activeCount = pendencias.filter(p => !p.checked).length;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    addPendencia(text.trim());
+    setText('');
+  };
+
+  return (
+    <div className="bg-white p-5 rounded-2xl shadow-[0_4px_24px_rgb(0,0,0,0.04)] flex flex-col justify-between md:col-span-1 col-span-2 min-h-[160px]">
+      <div className="space-y-1 flex-1 flex flex-col">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">PENDÊNCIAS ADM.</span>
+          <span className={cn(
+            "text-[10px] px-2 py-0.5 rounded-full font-bold",
+            activeCount > 0 ? "bg-red-50 text-red-500" : "bg-emerald-50 text-emerald-600"
+          )}>
+            {activeCount === 0 ? "OK" : `${activeCount} pendentes`}
+          </span>
+        </div>
+        
+        {/* List of items */}
+        <div className="flex-1 max-h-[85px] overflow-y-auto no-scrollbar space-y-1.5 my-1.5 pr-1">
+          {pendencias.length > 0 ? (
+            pendencias.map(p => (
+              <div key={p.id} className="flex items-center justify-between gap-1 border-b border-gray-50 pb-1 last:border-0 last:pb-0">
+                <button 
+                  type="button"
+                  onClick={() => togglePendencia(p.id)}
+                  className="flex items-center gap-1.5 text-left text-[11px] text-[#1A1A1A] font-semibold flex-1 truncate cursor-pointer"
+                >
+                  <span className={cn(
+                    "w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-all",
+                    p.checked ? "bg-[#A855F7] border-[#A855F7]" : "border-gray-200 bg-white"
+                  )}>
+                    {p.checked && <Check className="w-2.5 h-2.5 text-white stroke-[3px]" />}
+                  </span>
+                  <span className={cn("truncate max-w-[125px] tracking-tight", p.checked && "line-through text-gray-400 font-medium")}>
+                    {p.label}
+                  </span>
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => removePendencia(p.id)} 
+                  className="text-gray-300 hover:text-red-500 p-0.5 shrink-0 transition-colors"
+                  title="Remover pendência"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-[10px] text-gray-400 italic py-2">Sem pendências registradas</p>
+          )}
+        </div>
+      </div>
+
+      {/* Space digitavel for adding */}
+      <form onSubmit={handleSubmit} className="flex gap-1 border-t border-gray-100 pt-2 shrink-0">
+        <input 
+          type="text" 
+          placeholder="Nova pendência..."
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          className="flex-1 bg-[#FAF9F7] border border-gray-150 text-[10px] font-semibold px-2 py-1.5 rounded-lg focus:outline-none focus:border-[#A855F7] text-[#1A1A1A] placeholder:text-gray-400 transition-colors"
+        />
+        <button 
+          type="submit"
+          className="bg-[#F3E8FF] hover:bg-[#A855F7] text-[#A855F7] hover:text-white p-1.5 rounded-lg border border-transparent shadow-sm shrink-0 transition-colors flex items-center justify-center cursor-pointer"
+          title="Salvar pendência"
+        >
+          <Plus className="w-3.5 h-3.5" />
+        </button>
+      </form>
+    </div>
+  );
 }
 
 function DashboardView({
@@ -199,26 +293,13 @@ function DashboardView({
   toggleTask,
   notes,
   setNotes,
-  links,
-  addLink,
-  removeLink,
+  escalaTexto,
+  setEscalaTexto,
+  pendencias,
+  addPendencia,
+  togglePendencia,
+  removePendencia,
 }: DashboardViewProps) {
-  const [newLinkLabel, setNewLinkLabel] = useState('');
-  const [newLinkUrl, setNewLinkUrl] = useState('');
-
-  const handleAddLink = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newLinkLabel.trim() || !newLinkUrl.trim()) return;
-    
-    let url = newLinkUrl.trim();
-    if (!/^https?:\/\//i.test(url)) {
-      url = 'https://' + url;
-    }
-    
-    addLink(newLinkLabel.trim(), url);
-    setNewLinkLabel('');
-    setNewLinkUrl('');
-  };
 
   const completedCount = tasks.filter(t => t.checked).length;
   const progressPercentage = tasks.length > 0 ? Math.round((completedCount / tasks.length) * 100) : 0;
@@ -256,7 +337,12 @@ function DashboardView({
         </div>
         <CounterCard label="OPME verificada" initialValue={4} />
         <CounterCard label="Ópticas verificadas" initialValue={10} />
-        <StatsCard label="Alertas CME" value="1" alert />
+        <PendenciasCard 
+          pendencias={pendencias} 
+          addPendencia={addPendencia} 
+          togglePendencia={togglePendencia} 
+          removePendencia={removePendencia} 
+        />
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 md:gap-8">
@@ -277,77 +363,17 @@ function DashboardView({
 
          <div className="space-y-6 md:space-y-8 flex flex-col justify-between">
            <Card className="bg-[#FAF9F7] border border-gray-100 shadow-none flex flex-col h-full">
-             <h3 className="font-serif text-xl font-bold mb-4 flex items-center gap-2 text-[#A855F7]">
-               <AlertTriangle className="w-5 h-5" strokeWidth={2} /> Anotações para a ocorrência
+             <h3 className="font-serif text-xl font-bold mb-1 flex items-center gap-2 text-[#A855F7]">
+               <FileText className="w-5 h-5" strokeWidth={2} /> Mapa Cirúrgico do Plantão
              </h3>
+             <p className="text-[11px] text-gray-400 mb-4 font-semibold uppercase tracking-wider">Espaço livre para colar o mapa diário</p>
+             
              <textarea 
                value={notes}
                onChange={(e) => setNotes(e.target.value)}
-               placeholder="Anote aqui as principais intercorrências, manutenções ou informações relevantes do turno..." 
-               className="w-full flex-1 min-h-[100px] p-4 text-sm bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] resize-none transition-shadow text-[#1A1A1A] placeholder:text-gray-400 font-medium"
+               placeholder="Cole ou digite aqui o mapa cirúrgico completo do plantão (ex: Salas, Horários, Cirurgias, Pacientes)..." 
+               className="w-full flex-1 min-h-[180px] p-4 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] resize-none transition-shadow text-[#1A1A1A] placeholder:text-gray-400 font-medium font-mono leading-relaxed"
              />
-
-             {/* Link Manager Space inside the Daily important observations card */}
-             <div className="mt-5 border-t border-gray-200/60 pt-4 space-y-3">
-               <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                 <Link className="w-3.5 h-3.5 text-[#A855F7]" /> Links Úteis do Plantão
-               </h4>
-
-               {/* Links List */}
-               {links.length > 0 ? (
-                 <div className="flex flex-wrap gap-2 max-h-[84px] overflow-y-auto pr-1">
-                   {links.map(link => (
-                     <div key={link.id} className="flex items-center gap-1 bg-white border border-gray-100 rounded-lg px-2.5 py-1 shadow-sm text-xs font-medium text-[#1A1A1A]">
-                       <a 
-                         href={link.url} 
-                         target="_blank" 
-                         className="hover:text-[#A855F7] hover:underline transition-all flex items-center gap-1"
-                         referrerPolicy="no-referrer"
-                       >
-                         <span className="truncate max-w-[120px]">{link.label}</span>
-                         <ExternalLink className="w-3 h-3 text-gray-400 shrink-0" />
-                       </a>
-                       <button 
-                         onClick={() => removeLink(link.id)}
-                         className="text-gray-400 hover:text-red-500 rounded p-0.5 ml-1 transition-colors shrink-0"
-                         title="Remover link"
-                       >
-                         <Trash2 className="w-3 h-3" />
-                       </button>
-                     </div>
-                   ))}
-                 </div>
-               ) : (
-                 <p className="text-xs text-gray-400 italic">Insira links importantes abaixo (ex: Planilhas, Manuais, Google Sheets).</p>
-               )}
-
-               {/* Insert Link Form */}
-               <form onSubmit={handleAddLink} className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                 <input 
-                   type="text" 
-                   placeholder="Nome do link (ex: Planilha)" 
-                   value={newLinkLabel}
-                   onChange={(e) => setNewLinkLabel(e.target.value)}
-                   className="px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-[#A855F7] text-[#1A1A1A] bg-white transition-colors"
-                 />
-                 <div className="flex gap-1.5">
-                   <input 
-                     type="text" 
-                     placeholder="Colar link (ex: docs.google.com)" 
-                     value={newLinkUrl}
-                     onChange={(e) => setNewLinkUrl(e.target.value)}
-                     className="flex-1 px-3 py-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-[#A855F7] text-[#1A1A1A] bg-white transition-colors"
-                   />
-                   <button 
-                     type="submit"
-                     className="bg-[#F3E8FF] hover:bg-[#A855F7] text-[#A855F7] hover:text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all border border-transparent shadow-sm shrink-0"
-                     title="Adicionar Link"
-                   >
-                     <Plus className="w-4 h-4" />
-                   </button>
-                 </div>
-               </form>
-             </div>
            </Card>
 
            <Card>
@@ -356,6 +382,19 @@ function DashboardView({
                <ProgressBar label="Progresso do Turno" percentage={progressPercentage} />
                <ProgressBar label="Metas Diárias" percentage={Math.max(60, progressPercentage)} />
              </div>
+           </Card>
+
+           <Card className="bg-white border border-gray-200 rounded-2xl">
+              <h3 className="font-serif text-lg font-bold mb-1.5 flex items-center gap-2 text-[#A855F7]">
+                <Users className="w-4 h-4" /> Escala da Equipe (Turno)
+              </h3>
+              <p className="text-[11px] text-gray-400 mb-3 font-semibold uppercase tracking-wider">CME Escala Diária Configurável</p>
+              <textarea
+                value={escalaTexto}
+                onChange={(e) => setEscalaTexto(e.target.value)}
+                placeholder="Exemplo: &#10;• Expurgo: Renata&#10;• Preparo: Higo&#10;• Esterilização: Laysa..."
+                className="w-full min-h-[140px] p-3 text-xs bg-[#FAF9F7] border border-gray-150 rounded-xl focus:outline-none focus:border-[#A855F7] focus:ring-1 focus:ring-[#A855F7] resize-none transition-shadow text-[#1A1A1A] placeholder:text-gray-400 font-medium leading-relaxed font-mono"
+              />
            </Card>
          </div>
       </div>
@@ -409,6 +448,7 @@ function SetoresView() {
                 <div className="space-y-4 text-sm text-[#1A1A1A]/70 leading-relaxed font-medium">
                   <p className="flex items-start gap-2"><span className="text-[#A855F7]">•</span> Caixas de neurocirurgia na fila prioritária.</p>
                   <p className="flex items-start gap-2"><span className="text-[#A855F7]">•</span> Pinças videolaparoscópicas requerem inspeção extra.</p>
+                  <p className="flex items-start gap-2"><span className="text-[#A855F7]">•</span> Veja os pinos de schanz.</p>
                 </div>
               </Card>
            </div>
@@ -656,7 +696,7 @@ function AnotacoesView() {
 
 // -- MAIN LAYOUT -- //
 
-type Tab = 'Dashboard' | 'Setores' | 'OPME' | 'Equipe' | 'Anotacoes' | 'Insights';
+type Tab = 'Dashboard' | 'Setores' | 'OPME';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('Dashboard');
@@ -707,18 +747,27 @@ export default function App() {
   // State for Shift occurrence notes
   const [notes, setNotes] = useState('');
 
-  // State for helpful resources & custom links
-  const [links, setLinks] = useState<Array<{ id: string; label: string; url: string }>>([
-    { id: '1', label: 'Estatísticas de Temperatura', url: 'https://docs.google.com' },
-    { id: '2', label: 'Mapa Cirúrgico Central', url: 'https://docs.google.com' }
+  // State for daily staff roster (escala da equipe) - configurable daily
+  const [escalaTexto, setEscalaTexto] = useState<string>(
+    `• Amanda Maciel - Enfermeira Chefe (Plantão Diurno)\n• Higo - Técnico CME (Plantão Diurno)\n• Renata - Técnico CME (Plantão Diurno)\n• Laysa - Técnica CME (Plantão Diurno)\n• Bia - Técnica CME (Horário Comercial)\n• Laísa - Auxiliar CME (Plantão Diurno)`
+  );
+
+  // State for administrative pendencies
+  const [pendencias, setPendencias] = useState<Array<{ id: string; label: string; checked: boolean }>>([
+    { id: '1', label: 'Entregar relatório administrativo do dia', checked: false },
+    { id: '2', label: 'Revisar controle físico de autoclave', checked: true }
   ]);
 
-  const addLink = (label: string, url: string) => {
-    setLinks(prev => [...prev, { id: Date.now().toString(), label, url }]);
+  const addPendencia = (label: string) => {
+    setPendencias(prev => [...prev, { id: Date.now().toString(), label, checked: false }]);
   };
 
-  const removeLink = (id: string) => {
-    setLinks(prev => prev.filter(l => l.id !== id));
+  const removePendencia = (id: string) => {
+    setPendencias(prev => prev.filter(p => p.id !== id));
+  };
+
+  const togglePendencia = (id: string) => {
+    setPendencias(prev => prev.map(p => p.id === id ? { ...p, checked: !p.checked } : p));
   };
 
   // Helper to safely extract column name from schema cache errors
@@ -848,12 +897,17 @@ export default function App() {
           setNotes(data.notes || '');
         }
         if (data.insights !== undefined) {
-          setAiInsight(data.insights || '');
+          setEscalaTexto(data.insights || '');
         }
         if (data.links) {
           const parsedLinks = typeof data.links === 'string' ? JSON.parse(data.links) : data.links;
           if (Array.isArray(parsedLinks)) {
-            setLinks(parsedLinks);
+            const mapped = parsedLinks.map((item: any) => ({
+              id: item.id || Date.now().toString(),
+              label: item.label || item.title || '',
+              checked: item.checked !== undefined ? item.checked : false
+            }));
+            setPendencias(mapped);
           }
         }
       }
@@ -880,8 +934,8 @@ export default function App() {
         data_plantao: todayStr,
         notes: notes,
         tasks: tasks,
-        links: links,
-        insights: aiInsight,
+        links: pendencias,
+        insights: escalaTexto,
         opme_count: 4,
         opticas_count: 10,
         alertas_count: 1,
@@ -977,7 +1031,7 @@ export default function App() {
         data_plantao: todayStr,
         notes: notes,
         tasks: tasks,
-        links: links,
+        links: pendencias,
         insights: insightText,
         opme_count: 4,
         opticas_count: 10,
@@ -1120,7 +1174,7 @@ export default function App() {
       const ai = new GoogleGenAI({ apiKey });
 
       const activeTasksStr = tasks.map(t => `- [${t.checked ? 'X' : ' '}] ${t.title} (${t.metadata})`).join('\n');
-      const linksStr = links.map(l => `- ${l.label}: ${l.url}`).join('\n');
+      const pendenciasStr = pendencias.map(p => `- [${p.checked ? 'X' : ' '}] ${p.label}`).join('\n');
 
       const prompt = `Você é um Analista de IA Especialista em CME (Central de Material e Esterilização).
 Análise de forma rigorosa os detalhes do plantão de hoje descritos abaixo e prepare um relatório executivo de alta densidade técnica em português brasileiro. Use um tom clínico, focado em governança, biossegurança, otimização de ciclos e conformidade regulatória (Anvisa RDC 15).
@@ -1129,8 +1183,8 @@ DADOS DO PLANTÃO CME DE HOJE:
 - Notas / Ocorrências registradas: "${notes || "Nenhuma ocorrência registrada no sistema até o momento."}"
 - Checklists de Atividades do Dia:
 ${activeTasksStr}
-- Links Úteis e Documentação associada:
-${linksStr || "Nenhum link ativo cadastrado."}
+- Pendências Administrativas Registradas:
+${pendenciasStr || "Nenhuma pendência cadastrada."}
 - Capacidade Básica de Operações:
   - Kits de OPME recebidos/processados: 4
   - Ópticas e endoscópios cirúrgicos conferidos: 10
@@ -1194,9 +1248,6 @@ Seja prático e cirúrgico na sua linguagem. Evite explicações redundantes. Fo
     { id: 'Dashboard', icon: LayoutDashboard, label: 'Painel Inicial' },
     { id: 'Setores', icon: Layers, label: 'Sub-setores' },
     { id: 'OPME', icon: Package, label: 'Área OPME' },
-    { id: 'Equipe', icon: Users, label: 'Escala da Equipe' },
-    { id: 'Anotacoes', icon: FileText, label: 'Anotações' },
-    { id: 'Insights', icon: Sparkles, label: 'Insights IA' },
   ];
 
   return (
@@ -1339,10 +1390,10 @@ Seja prático e cirúrgico na sua linguagem. Evite explicações redundantes. Fo
             </div>
           ) : (
             <button 
-              onClick={() => setActiveTab('Insights')}
+              onClick={() => setShowCredentialsModal(true)}
               className="w-full p-3 bg-gradient-to-r from-[#A855F7]/5 to-[#9333EA]/5 border border-[#A855F7]/20 hover:border-[#A855F7]/50 rounded-2xl flex items-center justify-center gap-2 text-xs font-bold text-[#A855F7] hover:bg-[#F3E8FF]/20 transition-all shadow-sm cursor-pointer"
             >
-              <Lock className="w-3.5 h-3.5 text-[#A855F7] animate-pulse" /> Acessar Conta / IA
+              <Database className="w-3.5 h-3.5 text-[#A855F7]" /> Conectar ao Supabase
             </button>
           )}
         </div>
@@ -1444,43 +1495,16 @@ Seja prático e cirúrgico na sua linguagem. Evite explicações redundantes. Fo
                 toggleTask={toggleTask}
                 notes={notes}
                 setNotes={setNotes}
-                links={links}
-                addLink={addLink}
-                removeLink={removeLink}
+                escalaTexto={escalaTexto}
+                setEscalaTexto={setEscalaTexto}
+                pendencias={pendencias}
+                addPendencia={addPendencia}
+                togglePendencia={togglePendencia}
+                removePendencia={removePendencia}
               />
             )}
             {activeTab === 'Setores' && <SetoresView key="setores" />}
             {activeTab === 'OPME' && <OPMEView key="opme" />}
-            {activeTab === 'Equipe' && <EquipeView key="equipe" />}
-            {activeTab === 'Anotacoes' && <AnotacoesView key="anotacoes" />}
-            {activeTab === 'Insights' && (
-              <InsightsView
-                key="insights"
-                currentUser={currentUser}
-                authEmail={authEmail}
-                setAuthEmail={setAuthEmail}
-                authPassword={authPassword}
-                setAuthPassword={setAuthPassword}
-                authMode={authMode}
-                setAuthMode={setAuthMode}
-                isAuthLoading={isAuthLoading}
-                authError={authError}
-                authSuccessMsg={authSuccessMsg}
-                setAuthError={setAuthError}
-                setAuthSuccessMsg={setAuthSuccessMsg}
-                handleAuthSubmit={handleAuthSubmit}
-                handleSignOut={handleSignOut}
-                aiInsight={aiInsight}
-                isGenerating={isGenerating}
-                aiError={aiError}
-                generateIAInsights={generateIAInsights}
-                setAiInsight={setAiInsight}
-                notes={notes}
-                tasks={tasks}
-                links={links}
-                saveToSupabase={saveToSupabase}
-              />
-            )}
           </AnimatePresence>
         </div>
       </main>
@@ -1490,10 +1514,7 @@ Seja prático e cirúrgico na sua linguagem. Evite explicações redundantes. Fo
         {menuItems.map(item => {
           const shortLabel = 
             item.id === 'Dashboard' ? 'Painel' : 
-            item.id === 'Setores' ? 'Setores' :
-            item.id === 'OPME' ? 'OPME' :
-            item.id === 'Equipe' ? 'Escala' :
-            item.id === 'Anotacoes' ? 'Logs' : 'Insights';
+            item.id === 'Setores' ? 'Setores' : 'OPME';
             
           return (
             <button 
