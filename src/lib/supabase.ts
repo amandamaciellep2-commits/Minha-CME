@@ -1,13 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Default credentials specified by the user
-const DEFAULT_URL = 'sb_publishable_-BdydmncZmbTxB2iTkEcdw_vsAGlGSk';
-const DEFAULT_ANON_KEY = '25582d76-c5c2-4513-8686-5680e5dc1571';
+// Default credentials: Empty to allow the app to detect it's not configured
+const DEFAULT_URL = '';
+const DEFAULT_ANON_KEY = '';
 
 // Normalise URL function
 export function normalizeSupabaseUrl(url: string): string {
   const cleaned = url.trim();
   if (!cleaned) return '';
+  
+  // Detect common errors like publishable keys entered as URLs
+  if (cleaned.startsWith('sb_publishable_') || cleaned.length < 10) {
+    console.warn("Invalid Supabase URL detected:", cleaned);
+    return '';
+  }
+
   if (/^https?:\/\//i.test(cleaned)) {
     return cleaned;
   }

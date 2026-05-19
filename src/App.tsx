@@ -699,12 +699,6 @@ export default function App() {
   // Supabase Auth and User States
   const [currentUser, setCurrentUser] = useState<any>(null);
   
-  // Auto-redirect to dashboard when logged in if currently on Insights (login screen)
-  useEffect(() => {
-    if (currentUser && activeTab === 'Insights') {
-      setActiveTab('Dashboard');
-    }
-  }, [currentUser]);
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authMode, setAuthMode] = useState<'login' | 'signup' | 'forgot'>('login');
@@ -1182,7 +1176,10 @@ export default function App() {
     } catch (err: any) {
       console.error("Auth submit error:", err);
       let localizedMsg = err.message || "Erro desconhecido de autenticação.";
-      if (localizedMsg.includes("Invalid login credentials") || localizedMsg.includes("invalid-credential")) {
+      
+      if (localizedMsg.toLowerCase().includes("failed to fetch") || localizedMsg.toLowerCase().includes("fetch")) {
+        localizedMsg = "Não foi possível conectar ao Supabase (Failed to fetch). Verifique se o seu 'Supabase URL' está correto, se a internet está funcionando e se o projeto não foi pausado no painel do Supabase. Certifique-se também de que não há bloqueios de rede.";
+      } else if (localizedMsg.includes("Invalid login credentials") || localizedMsg.includes("invalid-credential")) {
         localizedMsg = "E-mail ou senha incorretos. Por favor, verifique.";
       } else if (localizedMsg.includes("User already registered") || localizedMsg.includes("already registered")) {
         localizedMsg = "Este e-mail já está cadastrado. Altere para 'Entrar'.";
@@ -2080,16 +2077,35 @@ function InsightsView({
           <div className="flex items-center justify-center gap-2 mt-2">
             <span className={cn(
               "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
-              supabaseStatus === 'connected' ? "bg-emerald-50 text-emerald-800 border-emerald-150" : "bg-gray-50 text-gray-500 border-gray-200"
+              supabaseStatus === 'connected' ? "bg-emerald-50 text-emerald-800 border-emerald-150" : "bg-rose-50 text-rose-800 border-rose-150"
             )}>
               <span className={cn(
                 "w-1.5 h-1.5 rounded-full",
-                supabaseStatus === 'connected' ? "bg-emerald-500 animate-pulse" : "bg-gray-400"
+                supabaseStatus === 'connected' ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
               )} />
-              Banco Supabase: {supabaseStatus === 'connected' ? 'Sincronizado / Online' : 'Parâmetros Locais'}
+              Status: {supabaseStatus === 'connected' ? 'Conectado ao Supabase' : 'Banco de Dados Desconectado'}
             </span>
           </div>
         </div>
+
+        {supabaseStatus !== 'connected' && (
+          <div className="bg-amber-50 border border-amber-150 rounded-2xl p-5 space-y-3 animate-fadeIn">
+            <div className="flex items-center gap-2 text-amber-900">
+              <Shield className="w-4 h-4 shrink-0" />
+              <h4 className="text-xs font-extrabold uppercase tracking-widest">Configuração Necessária</h4>
+            </div>
+            <p className="text-[11px] text-amber-800 leading-relaxed font-medium">
+              Este aplicativo utiliza o <strong>Supabase</strong> para autenticação e armazenamento persistente. 
+              Como você está acessando uma versão compartilhada, você precisa conectar seu próprio projeto gratuito para realizar login e salvar dados.
+            </p>
+            <button 
+              onClick={() => setShowDBConfigInLock(!showDBConfigInLock)}
+              className="text-[10px] font-bold text-amber-900 underline hover:no-underline flex items-center gap-1"
+            >
+              {showDBConfigInLock ? "Ocultar instruções de configuração ↑" : "Como configurar meu Supabase em 1 minuto? ↓"}
+            </button>
+          </div>
+        )}
 
         <Card className="shadow-2xl border border-gray-150 p-6 md:p-8 space-y-6">
           {authMode === 'forgot' ? (
@@ -2349,7 +2365,7 @@ function InsightsView({
                       type="button"
                       onClick={() => {
                         saveSupabaseCredentials(supabaseUrlInput, supabaseKeyInput);
-                        setAuthSuccessMsg("Chaves salvas! Sincronizando banco de dados local...");
+                        setAuthSuccessMsg("Chaves salvas! Conectando ao seu banco de dados Supabase...");
                         setTimeout(() => {
                           checkConnectionAndLoad(true);
                           setupAuthListener();
@@ -2487,6 +2503,14 @@ function InsightsView({
               >
                 <Database className="w-3.5 h-3.5 text-gray-400" />
                 Sincronizar Dados no Banco
+              </button>
+
+              <button
+                onClick={handleSignOut}
+                className="w-full py-3 bg-rose-50 hover:bg-rose-100/60 border border-rose-150 rounded-2xl text-xs font-bold text-rose-600 flex items-center justify-center gap-1.5 transition-all cursor-pointer mt-4"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Sair da Minha Conta
               </button>
             </div>
           </Card>
